@@ -24,7 +24,7 @@ class Import(SourceMapping):
         :return:
         :rtype:
         """
-        return self._filename.as_posix()
+        return self._filename.absolute().as_posix()
 
     @property
     def filename_path(self) -> Path:

@@ -101,6 +101,8 @@ class Slither(SlitherCore):  # pylint: disable=too-many-instance-attributes
         except InvalidCompilation as e:
             # pylint: disable=raise-missing-from
             raise SlitherError(f"Invalid compilation: \n{str(e)}")
+        
+        compilation_unit_from_file = dict()
         for compilation_unit in crytic_compile.compilation_units.values():
             compilation_unit_slither = SlitherCompilationUnit(self, compilation_unit)
             self._compilation_units.append(compilation_unit_slither)
@@ -111,6 +113,22 @@ class Slither(SlitherCore):  # pylint: disable=too-many-instance-attributes
                 self.add_source_code(path)
 
             _update_file_scopes(compilation_unit_slither.scopes.values())
+
+            for filename in compilation_unit_slither.crytic_compile_compilation_unit.filenames:
+                compilation_unit_from_file[filename.absolute] = compilation_unit_slither
+
+            for directive in compilation_unit_slither.import_directives:
+                if directive.alias:
+                    absolute_name = directive.filename
+                    if absolute_name in compilation_unit_from_file:
+                        filename = compilation_unit_slither.crytic_compile_compilation_unit.crytic_compile.filename_lookup(
+                        absolute_name
+                        )
+                        if filename in compilation_unit_from_file[absolute_name].scopes:
+                            for (k,v) in compilation_unit_from_file[absolute_name].scopes[filename].contracts.items():
+                                aliased_name = directive.alias + "." + k
+                                directive.scope.contracts[aliased_name] = v
+
 
         if kwargs.get("generate_patches", False):
             self.generate_patches = True
